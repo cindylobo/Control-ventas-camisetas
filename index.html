@@ -265,7 +265,7 @@ function getStock(id, sz) { return (state.find(s=>s.id===id)||{stock:{}}).stock[
 function getOrig(id, sz)  { return (PRODUCTS.find(p=>p.id===id)||{stock:{}}).stock[sz]||0; }
 function totalInventory() { return PRODUCTS.reduce((a,p)=>a+SIZES.reduce((b,sz)=>b+p.stock[sz],0),0); }
 function totalRemaining() { return state.reduce((a,s)=>a+SIZES.reduce((b,sz)=>b+s.stock[sz],0),0); }
-function totalSold()      { return allSales.reduce((a,e)=>a+e.qty,0); }
+function totalSold()      { return totalInventory() - totalRemaining(); }
 
 // ── Render ────────────────────────────────────────────────────
 function renderStats() {
@@ -357,17 +357,17 @@ async function confirmSale() {
   renderProducts(); renderStats();
   closeModal();
 
-  // Guardar en Firebase — venta como documento independiente
+  // Guardar en Firebase — atómico, sin riesgo de pisarse entre dispositivos
   const batch = db.batch();
   const ventaDoc = ventasCol.doc();
   batch.set(ventaDoc, {
     productId, size, qty, client,
     timestamp: firebase.firestore.FieldValue.serverTimestamp()
   });
-  // Actualizar stock
-  const stockData={};
-  state.forEach(s=>{stockData[s.id]=s.stock;});
-  batch.set(stockRef, stockData);
+  // Decremento atómico — Firestore lo maneja aunque haya varios usuarios simultáneos
+  batch.update(stockRef, {
+    [`${productId}.${size}`]: firebase.firestore.FieldValue.increment(-qty)
+  });
   await batch.commit();
 }
 
@@ -383,8 +383,9 @@ async function undoLast(productId, size) {
 
   const batch=db.batch();
   batch.delete(ventasCol.doc(recent.id));
-  const sd={};state.forEach(s=>{sd[s.id]=s.stock;});
-  batch.set(stockRef,sd);
+  batch.update(stockRef, {
+    [`${productId}.${size}`]: firebase.firestore.FieldValue.increment(recent.qty)
+  });
   await batch.commit();
 }
 
