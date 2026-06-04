@@ -83,7 +83,9 @@
 
   .btn-export{display:block;width:100%;background:var(--green);color:white;border:none;border-radius:12px;padding:14px;font-size:.95rem;font-weight:700;cursor:pointer;font-family:'DM Sans',sans-serif;margin-top:10px;letter-spacing:.04em;transition:background .15s;}
   .btn-export:hover{background:#1f4f39;}
-  .log-count{font-size:.75rem;color:#aaa;margin-bottom:8px;}
+  .btn-manual{display:block;width:100%;background:var(--gold);color:var(--dark);border:none;border-radius:12px;padding:11px;font-size:.85rem;font-weight:700;cursor:pointer;font-family:'DM Sans',sans-serif;margin-bottom:14px;letter-spacing:.03em;}
+  .btn-manual:hover{background:#b8942e;}
+  .tag-manual{display:inline-block;font-size:.6rem;background:#aaa;color:white;border-radius:4px;padding:1px 6px;font-weight:700;margin-right:4px;vertical-align:middle;}
 </style>
 </head>
 <body>
@@ -113,6 +115,7 @@
   <div id="products-container"></div>
 
   <h2 class="section-title">📋 Registro de ventas</h2>
+  <button class="btn-manual" onclick="openManual()">✏️ Agregar registro sin descontar stock</button>
   <div class="filter-row">
     <button class="btn-filter active" onclick="setFilter('hoy')">Hoy</button>
     <button class="btn-filter" onclick="setFilter('semana')">Esta semana</button>
@@ -123,6 +126,7 @@
   <button class="btn-export" onclick="exportCSV()">⬇️ Exportar registro a CSV</button>
 </main>
 
+<!-- Modal venta normal -->
 <div class="modal-overlay" id="modal">
   <div class="modal">
     <h3>Registrar venta</h3>
@@ -140,9 +144,7 @@
       <button class="btn-confirm" onclick="confirmSale()">✔ Confirmar venta</button>
     </div>
   </div>
-</div>
-
-<script src="https://www.gstatic.com/firebasejs/10.12.0/firebase-app-compat.js"></script>
+  .log-count{font-size:.75rem;color:#aaa;margin-bottom:8px;}/10.12.0/firebase-app-compat.js"></script>
 <script src="https://www.gstatic.com/firebasejs/10.12.0/firebase-firestore-compat.js"></script>
 <script>
 // ── Firebase ──────────────────────────────────────────────────
@@ -323,6 +325,7 @@ function renderLog() {
       <div class="log-left">
         <span class="tag-design">${p?p.name.split('–')[0].trim():e.productId}</span>
         <span class="tag-size">${e.size}</span>
+        ${e.manual?'<span class="tag-manual">manual</span>':''}
         <strong>×${e.qty}</strong>
         ${e.client?`· <em>${e.client}</em>`:''}
       </div>
@@ -331,7 +334,38 @@ function renderLog() {
   }).join('');
 }
 
-// ── Modal ─────────────────────────────────────────────────────
+// ── Modal manual ──────────────────────────────────────────────
+function openManual() {
+  // Poner fecha/hora actual como valor por defecto
+  const now = new Date();
+  now.setMinutes(now.getMinutes() - now.getTimezoneOffset());
+  document.getElementById('man-date').value = now.toISOString().slice(0,16);
+  document.getElementById('man-client').value = '';
+  document.getElementById('man-qty').value = 1;
+  document.getElementById('modal-manual').classList.add('open');
+}
+function closeManual() { document.getElementById('modal-manual').classList.remove('open'); }
+function changeManQty(d) {
+  const i = document.getElementById('man-qty');
+  i.value = Math.max(1, (parseInt(i.value)||1) + d);
+}
+async function confirmManual() {
+  const productId = document.getElementById('man-product').value;
+  const size      = document.getElementById('man-size').value;
+  const qty       = parseInt(document.getElementById('man-qty').value)||1;
+  const client    = document.getElementById('man-client').value.trim();
+  const dateVal   = document.getElementById('man-date').value;
+  if (!dateVal) { alert('Por favor ingresa la fecha y hora.'); return; }
+  const ts = firebase.firestore.Timestamp.fromDate(new Date(dateVal));
+  await ventasCol.doc().set({
+    productId, size, qty, client,
+    timestamp: ts,
+    manual: true   // marcado para identificarlo en el log
+  });
+  closeManual();
+}
+
+// ── Modal venta normal ────────────────────────────────────────
 function openModal(productId, size) {
   pendingAction={productId,size};
   const p=PRODUCTS.find(pr=>pr.id===productId);
@@ -405,6 +439,7 @@ function exportCSV() {
 }
 
 document.getElementById('modal').addEventListener('click',e=>{if(e.target===document.getElementById('modal'))closeModal();});
+document.getElementById('modal-manual').addEventListener('click',e=>{if(e.target===document.getElementById('modal-manual'))closeManual();});
 init();
 </script>
 </body>
