@@ -14,6 +14,8 @@
   #loading .spin{width:44px;height:44px;border:4px solid #2e2013;border-top-color:var(--gold);border-radius:50%;animation:spin .8s linear infinite;}
   @keyframes spin{to{transform:rotate(360deg);}}
   #loading p{color:var(--gold);font-size:.9rem;letter-spacing:.1em;text-transform:uppercase;}
+  #loading .err{display:none;color:#ff6b6b;font-size:.85rem;text-align:center;max-width:260px;line-height:1.5;}
+  #loading .btn-retry{display:none;background:var(--coral);color:white;border:none;border-radius:10px;padding:10px 24px;font-size:.9rem;font-weight:700;cursor:pointer;font-family:'DM Sans',sans-serif;margin-top:4px;}  
 
   header{background:var(--dark);color:var(--cream);padding:18px 24px 14px;display:flex;align-items:center;gap:14px;border-bottom:4px solid var(--gold);}
   header h1{font-family:'Playfair Display',serif;font-size:1.5rem;line-height:1.1;}
@@ -92,7 +94,9 @@
 
 <div id="loading">
   <div class="spin"></div>
-  <p>Conectando con Firebase…</p>
+  <p id="loading-msg">Conectando con Firebase…</p>
+  <p class="err" id="loading-err">No se pudo conectar con Firebase.<br>Verifica tu conexión a internet.</p>
+  <button class="btn-retry" id="btn-retry" onclick="location.reload()">🔄 Reintentar</button>
 </div>
 
 <header>
